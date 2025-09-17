@@ -44,7 +44,7 @@
         <h1>App Hub — Upload your web apps or APKs</h1>
         <p class="lead">Upload HTML (or paste code) or upload APKs. Web HTML files can run inside the hub. Reviews are saved via Supabase.</p>
       </div>
-      <div style="margin-left:auto;min-width:120px;text-align:right" class="tiny">Single-file demo • Replace <code>SUPABASE_URL</code> & <code>SUPABASE_KEY</code></div>
+      <div style="margin-left:auto;min-width:120px;text-align:right" class="tiny">Single-file demo • Replace <code>https://hnkugpcnkzunmkbgowxt.supabase.co</code> & <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiaW5mcnlwd213ZGtwbmFlaGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0MjU4MzksImV4cCI6MjA2OTAwMTgzOX0.1MMexu-zrlu5C182gIWgT72SQArD3euFK4lk97IBwcU</code></div>
     </header>
 
     <div class="grid">
@@ -75,15 +75,6 @@
             <button id="uploadBtn">Upload & Publish</button>
             <div class="note">Files go to Supabase Storage & metadata goes to <code>apps</code> table. Reviews are stored in <code>reviews</code> table.</div>
           </div>
-        </div>
-
-        <div style="margin-top:12px;color:var(--muted);font-size:13px">
-          <strong>Quick setup notes:</strong>
-          <ul style="margin:6px 0 0 16px;color:var(--muted)">
-            <li>Create a public storage bucket named <code>app-files</code> in Supabase.</li>
-            <li>Create tables <code>apps</code> and <code>reviews</code> (SQL provided in instructions below).</li>
-            <li>Use the anon/public key for client-side uploads (set CORS in Supabase policy to allow your site during testing).</li>
-          </ul>
         </div>
       </section>
 
@@ -125,7 +116,7 @@ create table reviews (
       </aside>
     </div>
 
-    <footer>Made for Spark & Nova 🤝 — Open the console for debug logs</footer>
+    <footer>Made for Spark — Open the console for debug logs</footer>
   </div>
 
   <!-- Viewer modal -->
