@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>App Hub — Upload & Run (Single file)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#7c3aed;--muted:#9aa4b2;--glass:rgba(255,255,255,0.03)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#071024 0%, #071424 60%);color:#e6eef8}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;align-items:center;gap:16px}
+    h1{margin:0;font-size:22px}
+    p.lead{margin:4px 0 18px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;font-size:14px}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:10px}
+    button{background:linear-gradient(90deg,var(--accent),#4f46e5);border:0;padding:10px 12px;border-radius:10px;color:white;cursor:pointer}
+    .apps-list{display:grid;gap:10px}
+    .app-card{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+    .app-info{max-width:68%}
+    .muted{color:var(--muted);font-size:13px}
+    .tiny{font-size:12px;color:var(--muted)}
+    .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px}
+    .viewer-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.75));z-index:50}
+    .viewer{width:90%;max-width:1000px;height:80%;background:#071026;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .viewer header{display:flex;justify-content:space-between;align-items:center}
+    iframe{flex:1;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:white}
+    .reviews{max-height:200px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+    .rev{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.02)}
+    .small{font-size:13px}
+    .file-info{font-size:13px;color:var(--muted);margin-top:6px}
+    .note{font-size:13px;color:var(--muted);margin-top:10px}
+    footer{margin-top:26px;color:var(--muted);font-size:13px;text-align:center}
+    @media(max-width:900px){.grid{grid-template-columns:1fr;}.app-info{max-width:58%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>App Hub — Upload your web apps or APKs</h1>
+        <p class="lead">Upload HTML (or paste code) or upload APKs. Web HTML files can run inside the hub. Reviews are saved via Supabase.</p>
+      </div>
+      <div style="margin-left:auto;min-width:120px;text-align:right" class="tiny">Single-file demo • Replace <code>SUPABASE_URL</code> & <code>SUPABASE_KEY</code></div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h3 style="margin-top:0">Upload an app</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label>App name</label>
+          <input id="appName" placeholder="My cool game" />
+
+          <label>Description</label>
+          <textarea id="appDesc" placeholder="Short description"></textarea>
+
+          <label>Type</label>
+          <select id="appType">
+            <option value="web">Web app (HTML/JS/CSS)</option>
+            <option value="apk">Android APK</option>
+            <option value="zip">Web ZIP (multiple files)</option>
+          </select>
+
+          <label>Upload file (optional for web if you paste code)</label>
+          <input id="fileInput" type="file" accept=".html,.zip,.apk,.js,.css" />
+          <div class="file-info" id="fileInfo"></div>
+
+          <label>Or paste HTML code (will be saved as .html and runnable)</label>
+          <textarea id="pasteCode" placeholder="Paste index.html content here (optional)"></textarea>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="uploadBtn">Upload & Publish</button>
+            <div class="note">Files go to Supabase Storage & metadata goes to <code>apps</code> table. Reviews are stored in <code>reviews</code> table.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;color:var(--muted);font-size:13px">
+          <strong>Quick setup notes:</strong>
+          <ul style="margin:6px 0 0 16px;color:var(--muted)">
+            <li>Create a public storage bucket named <code>app-files</code> in Supabase.</li>
+            <li>Create tables <code>apps</code> and <code>reviews</code> (SQL provided in instructions below).</li>
+            <li>Use the anon/public key for client-side uploads (set CORS in Supabase policy to allow your site during testing).</li>
+          </ul>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0">Apps list</h3>
+        <div id="appsList" class="apps-list">
+          <!-- App cards injected here -->
+        </div>
+        <div style="margin-top:12px">
+          <button id="refreshBtn">Refresh list</button>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+        <div class="tiny muted">Instructions & DB SQL</div>
+        <pre class="tiny" style="white-space:pre-wrap;margin-top:6px;color:var(--muted);">
+-- Create tables in Supabase (SQL)
+
+create table apps (
+  id serial primary key,
+  name text not null,
+  description text,
+  type text not null,
+  file_path text,
+  public_url text,
+  created_at timestamptz default now()
+);
+
+create table reviews (
+  id serial primary key,
+  app_id int references apps(id) on delete cascade,
+  reviewer text,
+  rating int,
+  comment text,
+  created_at timestamptz default now()
+);
+
+-- Create a public storage bucket named 'app-files'
+        </pre>
+      </aside>
+    </div>
+
+    <footer>Made for Spark & Nova 🤝 — Open the console for debug logs</footer>
+  </div>
+
+  <!-- Viewer modal -->
+  <div id="viewerModal" class="viewer-modal">
+    <div class="viewer">
+      <header>
+        <div><strong id="viewTitle">App</strong> <span id="viewType" class="tiny muted"></span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="closeViewer">Close</button>
+        </div>
+      </header>
+
+      <iframe id="appFrame" sandbox="allow-scripts allow-same-origin" srcdoc=""></iframe>
+
+      <div style="display:flex;gap:12px">
+        <div style="flex:1">
+          <div class="tiny muted">Reviews</div>
+          <div id="reviews" class="reviews"></div>
+
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+            <input id="revName" placeholder="Your name" />
+            <input id="revRating" placeholder="Rating 1-5" type="number" min="1" max="5" />
+            <textarea id="revComment" placeholder="Your review"></textarea>
+            <div style="display:flex;gap:8px"><button id="postReview">Post review</button><div id="revMsg" class="tiny muted"></div></div>
+          </div>
+        </div>
+        <div style="width:220px">
+          <div class="tiny muted">App details</div>
+          <div style="margin-top:6px"><strong id="detailName"></strong></div>
+          <div class="muted tiny" id="detailDesc"></div>
+          <div style="margin-top:8px"><a id="downloadLink" href="#" target="_blank">Download / Open in new tab</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    // ======= Replace these with your values ========
+    const SUPABASE_URL = 'SUPABASE_URL'
+    const SUPABASE_KEY = 'SUPABASE_KEY'
+    // ===============================================
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+    const STORAGE_BUCKET = 'app-files'
+
+    // UI elements
+    const fileInput = document.getElementById('fileInput')
+    const fileInfo = document.getElementById('fileInfo')
+    const uploadBtn = document.getElementById('uploadBtn')
+    const appsList = document.getElementById('appsList')
+    const refreshBtn = document.getElementById('refreshBtn')
+    const pasteCode = document.getElementById('pasteCode')
+    const appType = document.getElementById('appType')
+
+    const viewerModal = document.getElementById('viewerModal')
+    const closeViewer = document.getElementById('closeViewer')
+    const appFrame = document.getElementById('appFrame')
+    const viewTitle = document.getElementById('viewTitle')
+    const viewType = document.getElementById('viewType')
+    const reviewsDiv = document.getElementById('reviews')
+    const postReviewBtn = document.getElementById('postReview')
+    const revName = document.getElementById('revName')
+    const revRating = document.getElementById('revRating')
+    const revComment = document.getElementById('revComment')
+    const revMsg = document.getElementById('revMsg')
+    const detailName = document.getElementById('detailName')
+    const detailDesc = document.getElementById('detailDesc')
+    const downloadLink = document.getElementById('downloadLink')
+
+    let currentApp = null
+
+    fileInput.addEventListener('change', ()=>{
+      const f = fileInput.files[0]
+      if(!f){ fileInfo.textContent = '' ; return }
+      fileInfo.textContent = `Selected: ${f.name} (${Math.round(f.size/1024)} KB)`
+    })
+
+    refreshBtn.addEventListener('click', ()=>fetchAndRenderApps())
+
+    uploadBtn.addEventListener('click', async ()=>{
+      const name = document.getElementById('appName').value.trim()
+      const desc = document.getElementById('appDesc').value.trim()
+      const type = appType.value
+      const file = fileInput.files[0]
+      const code = pasteCode.value.trim()
+
+      if(!name){ alert('Please enter an app name'); return }
+      if(!file && !code){
+        if(type === 'apk'){ alert('Please upload the APK file'); return }
+      }
+
+      uploadBtn.disabled = true
+      uploadBtn.textContent = 'Uploading...'
+
+      try{
+        let uploadPath = null
+        let publicUrl = null
+
+        if(code){
+          // Save pasted HTML as a .html file
+          const filename = `${Date.now()}_${name.replace(/[^a-z0-9_-]/gi,'_')}.html`
+          const blob = new Blob([code], {type: 'text/html'})
+          const fileObj = new File([blob], filename, {type:'text/html'})
+          const up = await uploadFileToStorage(fileObj, filename)
+          uploadPath = up.path
+          publicUrl = up.publicUrl
+        }
+
+        if(file){
+          const filename = `${Date.now()}_${file.name.replace(/[^a-z0-9._-]/gi,'_')}`
+          const up = await uploadFileToStorage(file, filename)
+          uploadPath = up.path
+          publicUrl = up.publicUrl
+        }
+
+        // Insert metadata into apps table
+        const { data, error } = await supabase
+          .from('apps')
+          .insert([{ name, description: desc, type, file_path: uploadPath, public_url: publicUrl }])
+          .select()
+
+        if(error) throw error
+
+        console.log('Published app:', data)
+        await fetchAndRenderApps()
+        alert('App uploaded!')
+
+      }catch(err){
+        console.error(err)
+        alert('Upload failed: '+(err.message||err))
+      }finally{
+        uploadBtn.disabled = false
+        uploadBtn.textContent = 'Upload & Publish'
+      }
+    })
+
+    async function uploadFileToStorage(file, destPath){
+      // destPath is the path inside bucket
+      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).upload(destPath, file, {cacheControl: '3600', upsert: false})
+      if(error){
+        // If file exists, try upsert
+        if(error.message && error.message.includes('File already exists')){
+          await supabase.storage.from(STORAGE_BUCKET).remove([destPath])
+          await supabase.storage.from(STORAGE_BUCKET).upload(destPath, file, {cacheControl: '3600', upsert: false})
+        } else throw error
+      }
+      const { publicURL } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(destPath)
+      return { path: destPath, publicUrl: publicURL }
+    }
+
+    async function fetchAndRenderApps(){
+      appsList.innerHTML = 'Loading...'
+      const { data, error } = await supabase.from('apps').select('*').order('created_at', {ascending:false})
+      if(error){ appsList.innerHTML = 'Failed to load apps'; console.error(error); return }
+      appsList.innerHTML = ''
+
+      if(!data || data.length === 0){ appsList.innerHTML = '<div class="muted">No apps yet — upload one!</div>'; return }
+
+      data.forEach(app=>{
+        const el = document.createElement('div')
+        el.className = 'app-card'
+        el.innerHTML = `
+          <div class="app-info">
+            <div style="display:flex;gap:8px;align-items:center">
+              <strong>${escapeHtml(app.name)}</strong>
+              <span class="badge">${app.type||'app'}</span>
+            </div>
+            <div class="muted tiny">${escapeHtml(app.description||'')}</div>
+            <div class="tiny file-info">${app.file_path?escapeHtml(app.file_path):''}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button data-id="${app.id}" class="runBtn">Open</button>
+            <a class="tiny" href="${app.public_url||'#'}" target="_blank">Link</a>
+          </div>
+        `
+        appsList.appendChild(el)
+      })
+
+      // attach handlers
+      document.querySelectorAll('.runBtn').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = Number(btn.getAttribute('data-id'))
+          openAppViewer(id)
+        }
+      })
+    }
+
+    async function openAppViewer(id){
+      const { data, error } = await supabase.from('apps').select('*').eq('id', id).limit(1).single()
+      if(error){ alert('Failed to load app'); console.error(error); return }
+      currentApp = data
+      viewTitle.textContent = data.name
+      viewType.textContent = data.type
+      detailName.textContent = data.name
+      detailDesc.textContent = data.description
+      downloadLink.href = data.public_url || '#'
+      downloadLink.textContent = data.public_url ? 'Open / Download' : 'No file'
+
+      // Load reviews
+      await loadReviewsForApp(id)
+
+      // If web html, run in iframe. If html file uploaded earlier (public url ends with .html), we can set src directly.
+      if(data.type === 'web' && data.public_url && data.public_url.endsWith('.html')){
+        appFrame.removeAttribute('srcdoc')
+        appFrame.src = data.public_url
+      } else if(data.type === 'web' && data.public_url && data.public_url.endsWith('.zip')){
+        appFrame.srcdoc = `<div style="color:#ddd;padding:20px">This is a ZIP web app. Download and host or upload extracted index.html. Download: <a href='${data.public_url}' target='_blank'>Download ZIP</a></div>`
+      } else if(data.type === 'web' && data.public_url){
+        // try to open file in new tab instead
+        appFrame.srcdoc = `<div style="color:#ddd;padding:20px">Open in new tab: <a href='${data.public_url}' target='_blank'>Open</a></div>`
+      } else if(data.type === 'apk'){
+        appFrame.srcdoc = `<div style="color:#ddd;padding:20px">APK files can't run in the browser. Use the download link: <a href='${data.public_url}' target='_blank'>Download APK</a></div>`
+      } else {
+        appFrame.srcdoc = `<div style="color:#ddd;padding:20px">No runnable content</div>`
+      }
+
+      viewerModal.style.display = 'flex'
+    }
+
+    closeViewer.addEventListener('click', ()=>{ viewerModal.style.display = 'none'; appFrame.src = 'about:blank'; currentApp = null })
+
+    async function loadReviewsForApp(appId){
+      reviewsDiv.innerHTML = 'Loading reviews...'
+      const { data, error } = await supabase.from('reviews').select('*').eq('app_id', appId).order('created_at', {ascending:false})
+      if(error){ reviewsDiv.innerHTML = 'Failed to load reviews'; console.error(error); return }
+      if(!data || data.length === 0){ reviewsDiv.innerHTML = '<div class="muted">No reviews yet — be the first!</div>'; return }
+      reviewsDiv.innerHTML = ''
+      data.forEach(r=>{
+        const d = document.createElement('div')
+        d.className = 'rev'
+        d.innerHTML = `<strong>${escapeHtml(r.reviewer||'Anon')}</strong> <span class="tiny muted">${new Date(r.created_at).toLocaleString()}</span><div class="tiny">Rating: ${r.rating||0}</div><div>${escapeHtml(r.comment||'')}</div>`
+        reviewsDiv.appendChild(d)
+      })
+    }
+
+    postReviewBtn.addEventListener('click', async ()=>{
+      if(!currentApp){ revMsg.textContent = 'Open an app first'; return }
+      const name = revName.value.trim() || 'Anon'
+      const rating = Number(revRating.value) || 0
+      const comment = revComment.value.trim()
+      postReviewBtn.disabled = true
+      revMsg.textContent = 'Posting...'
+      try{
+        const { data, error } = await supabase.from('reviews').insert([{ app_id: currentApp.id, reviewer: name, rating, comment }]).select()
+        if(error) throw error
+        revMsg.textContent = 'Posted!'
+        revName.value = ''
+        revRating.value = ''
+        revComment.value = ''
+        await loadReviewsForApp(currentApp.id)
+      }catch(err){ console.error(err); revMsg.textContent = 'Failed to post' }
+      finally{ postReviewBtn.disabled = false; setTimeout(()=>revMsg.textContent='',1500) }
+    })
+
+    function escapeHtml(str){ if(!str) return ''; return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
+
+    // initial load
+    fetchAndRenderApps()
+
+    // Debug helper: show error messages from Supabase client
+    window.supabase = supabase
+  </script>
+</body>
+</html>
